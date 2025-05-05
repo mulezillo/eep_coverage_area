@@ -1,0 +1,8 @@
+# install with pip install -r requirements.txt
+numpy==2.0.2
+matplotlib==3.9.4
+opencv-python==4.11.0.86
+scipy==1.13.1
+
+# note: although the version numbers for packages are listed directly in this file, it is unlikely that these exact
+# package versions are actually required their use is generally constrained to basic package methods.
