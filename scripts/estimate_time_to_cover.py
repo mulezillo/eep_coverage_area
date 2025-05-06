@@ -5,11 +5,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import utils
-from nav_error_profile import NavErrorProfile
+from nav_error_profile import EEP
 from coverage import Coverage
 
 
 if __name__ == "__main__":
+    """
+    Estimate the expected number of cleanings required to cover an entire area.
+    """
     step_size = 0.01
     width_m = 10
     height_m = 10
@@ -21,7 +24,7 @@ if __name__ == "__main__":
     cov = np.array(utils.load_profile(profile)["covariance"])
     # scale the eep to cm precision
     cm_cov_mat = utils.scale_cov_mat(cov, step_size)
-    nep = NavErrorProfile(cm_cov_mat)
+    nep = EEP(cm_cov_mat)
 
     # also need a history of coverage percentages
     coverage_after_cleaning = {}

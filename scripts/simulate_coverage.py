@@ -7,12 +7,22 @@ import statistics
 import numpy as np
 import matplotlib.pyplot as plt
 
-from nav_error_profile import NavErrorProfile
+from nav_error_profile import EEP
 from coverage import Coverage
 import utils
 
 
-def simulate_coverage(nep: NavErrorProfile, area_width_m: int, area_height_m: int, sims: int):
+def simulate_coverage(nep: EEP, area_width_m: int, area_height_m: int, sims: int) -> tuple[np.array, list]:
+    """
+    Perform a simulation to estimate coverage area
+    Args:
+        nep: an EEP nav error profile
+        area_width_m: the width of the area in meters
+        area_height_m: the height of the area in meters
+        sims: the number of simulations to run
+
+    Returns: normalized coverage map, list of history of coverage percentages
+    """
     # build a heat map to track coverage at cm level
     heat_map = np.zeros((area_height_m * 100, area_width_m * 100), dtype=int)
 
@@ -31,25 +41,16 @@ def simulate_coverage(nep: NavErrorProfile, area_width_m: int, area_height_m: in
     return normalized_map, coverage_pct_history
 
 
-def plot_cdf_set(data: list[list], labels: list, x_label: str, title: str, save_path: os.PathLike):
-    # data and labels must be the same length!
-    if len(data) != len(labels):
-        raise Exception("Must have the same number of labels as distributions!")
-
-    plt.clf()
-    for d, l in zip(data, labels):
-        sorted_data = list(sorted(d))
-        frequencies = [i / len(d) for i in range(len(d))]
-        plt.plot(sorted_data, frequencies, label=l)
-    plt.ylabel("Probability (est)")
-    plt.xlabel(x_label)
-    plt.legend()
-    plt.title(title)
-    plt.savefig(save_path)
-
-
-def plot_coverage_dist(maps: list[np.array], labels: list, x_label: str, title: str, save_path: os.PathLike):
-
+def plot_coverage_dist(maps: list[np.array], labels: list, x_label: str, title: str, save_path: os.PathLike) -> None:
+    """
+    Helper function for creating a CDF of coverage frequency for each location in an array map
+    Args:
+        maps: list of maps
+        labels: labels to use for each map
+        x_label: the x label for the plot
+        title: the title of the plot
+        save_path: the path to save the plot to
+    """
     plt.clf()
     for normalized_map, l in zip(maps, labels):
         # flatten the array to 1D (don't care about position any more)
@@ -64,7 +65,15 @@ def plot_coverage_dist(maps: list[np.array], labels: list, x_label: str, title: 
     plt.savefig(save_path)
 
 
-def save_statistics(cov_dists: list[list], cov_maps: list[np.array], labels: list, save_name: str):
+def save_statistics(cov_dists: list[list], cov_maps: list[np.array], labels: list, save_name: str) -> None:
+    """
+    Helper function for saving the resulting statistics from a simulation suite to a file
+    Args:
+        cov_dists: list of lists for coverages
+        cov_maps: list of coverage maps
+        labels: labels to match each set in the above lists
+        save_name: the name to give the resuling file
+    """
     # get the mean coverage areas for each of the eeps and write to file
     mean_cov = [statistics.mean(c) for c in cov_dists]
 
@@ -82,6 +91,14 @@ def save_statistics(cov_dists: list[list], cov_maps: list[np.array], labels: lis
 
 
 if __name__ == "__main__":
+    """
+    Simulate coverage for 1000 simulations for 6 different EEP distributions and analyze the results
+    
+    Simulate coverage for 1000 simulations for 4 different map sizes with a single EEP distribution and analyze the
+    results
+    
+    Simulate the time it takes to cover the entire map for 100 simulations and analyze the results.
+    """
 
     # setup simulation constants
     # we're going to use cm precision, but eep is in m. so this is our conversion factor
@@ -111,7 +128,7 @@ if __name__ == "__main__":
         cov = np.array(utils.load_profile(p)["covariance"])
         # scale the eep to cm precision
         cm_cov_mat = utils.scale_cov_mat(cov, step_size)
-        nav_prof = NavErrorProfile(cm_cov_mat)
+        nav_prof = EEP(cm_cov_mat)
         h_map, cov_pct_hist = simulate_coverage(nav_prof, width_m, height_m, num_sims)
 
         coverage_dists.append(cov_pct_hist)
@@ -123,7 +140,7 @@ if __name__ == "__main__":
 
     # now plot a cdf for all eeps
     cdf_save_path = pathlib.Path("../", "figures", "coverage_cdf.png")
-    plot_cdf_set(coverage_dists, curve_labels, "Coverage %", "CDF of Coverage %", cdf_save_path)
+    utils.plot_cdf_set(coverage_dists, curve_labels, "Coverage %", "CDF of Coverage %", cdf_save_path)
 
     cov_freq_cdf_path = pathlib.Path("../", "figures", "coverage_frequency_dist.png")
     plot_coverage_dist(coverage_maps, curve_labels, "Coverage Frequency per Cleaning for each Square cm", "CDF of Coverage Frequency", cov_freq_cdf_path)
@@ -138,7 +155,7 @@ if __name__ == "__main__":
     cov = np.array(utils.load_profile(area_size_eep)["covariance"])
     # scale the eep to cm precision
     cm_cov_mat = utils.scale_cov_mat(cov, step_size)
-    area_prof = NavErrorProfile(cm_cov_mat)
+    area_prof = EEP(cm_cov_mat)
 
     dim_coverage_dists = []
     dim_coverage_maps = []
@@ -159,7 +176,7 @@ if __name__ == "__main__":
     # now plot a cdf for all eeps
     dim_labels = [f"{w} x {h}" for w,h in dimensions]
     cdf_dim_save_path = pathlib.Path("../", "figures", "coverage_cdf_by_dim.png")
-    plot_cdf_set(dim_coverage_dists, dim_labels, "Coverage %", "CDF of Coverage %", cdf_dim_save_path)
+    utils.plot_cdf_set(dim_coverage_dists, dim_labels, "Coverage %", "CDF of Coverage %", cdf_dim_save_path)
 
     cov_dim_freq_cdf_path = pathlib.Path("../", "figures", "coverage_frequency_dist_by_dim.png")
     plot_coverage_dist(dim_coverage_maps, dim_labels, "Coverage Frequency per Cleaning for each Square cm", "CDF of Coverage Frequency", cov_dim_freq_cdf_path)

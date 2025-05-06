@@ -7,7 +7,10 @@ import numpy as np
 
 
 if __name__ == "__main__":
-
+    """
+    Given a file containing coverage percentages for different sized areas at a fixed EEP, estimate the power law
+    scaling of the relationship.
+    """
     cov_scaling_path = pathlib.Path("..", "figures", "dim_statistics.csv")
     with open(cov_scaling_path, "r") as f:
         csv_reader = csv.reader(f)

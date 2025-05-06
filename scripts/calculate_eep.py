@@ -7,10 +7,17 @@ import pathlib
 import numpy as np
 
 import utils
-from nav_error_profile import NavErrorProfile
+from nav_error_profile import EEP
 
 
-def load_data(dpath: os.PathLike):
+def load_data(dpath: os.PathLike) -> list:
+    """
+    Load 2D data from csv file
+    Args:
+        dpath: path to data
+
+    Returns: list of row data
+    """
     with open(dpath, "r") as f:
         data = csv.reader(f)
         out_data = [row for row in data]
@@ -18,8 +25,14 @@ def load_data(dpath: os.PathLike):
     return out_data
 
 
-def clean_data(data: list):
-    # convert all values from strings to floats
+def clean_data(data: list) -> list:
+    """
+    Convert all string values in a data set to floats
+    Args:
+        data: list of string data
+
+    Returns: list of float data
+    """
     # remove the header - don't care about that
     out_data = []
     for row in data[1:]:
@@ -27,8 +40,16 @@ def clean_data(data: list):
     return out_data
 
 
-def scale_errors_by_distance(x_errors: list, y_errors: list, distances: list):
+def scale_errors_by_distance(x_errors: list, y_errors: list, distances: list) -> tuple[list, list]:
+    """
+    Scale the measured error magnitude by the distance travelled using random walk scaling
+    Args:
+        x_errors: list of errors in the x direction
+        y_errors: list of errors in the y direction
+        distances: list of distances between error measurements
 
+    Returns: tuple of the scaled x and y errors
+    """
     # assume that the expected error magnitude scales like a random walk,
     # expected displacement = num steps ^ (1/2)
 
@@ -43,7 +64,15 @@ def scale_errors_by_distance(x_errors: list, y_errors: list, distances: list):
     return scaled_x, scaled_y
 
 
-def save_eep(cov: np.array, cx: float, cy: float, save_path: os.PathLike):
+def save_eep(cov: np.array, cx: float, cy: float, save_path: os.PathLike) -> None:
+    """
+    Write an EEP distribution to file
+    Args:
+        cov: the covariance matrix
+        cx: the x center of the distribution
+        cy: the y center of the distribution
+        save_path: the path to save to
+    """
     d = {
         "covariance": cov.tolist(),
         "center_x": cx,
@@ -54,8 +83,17 @@ def save_eep(cov: np.array, cx: float, cy: float, save_path: os.PathLike):
         f.close()
 
 
-def test_eep(nep: NavErrorProfile, scale: float = 1.0, sim_length: int = 1000, sample_size: int = 100):
+def test_eep(nep: EEP, scale: float = 1.0, sim_length: int = 1000, sample_size: int = 100) -> tuple[list, list, list]:
+    """
+    Helper function for testing the ability to generate EEP distributions that have been scaled.
+    Args:
+        nep: an EEP distribution
+        scale: the scaling to apply to the distribution
+        sim_length: the number of sims to test for
+        sample_size: the sample size for each sim
 
+    Returns: simulated x errors, simulated y errors, and simulated distance traveled
+    """
     x_true = 0
     y_true = 0
     x_cmd = 0
@@ -112,7 +150,14 @@ def test_eep(nep: NavErrorProfile, scale: float = 1.0, sim_length: int = 1000, s
     return x_errs_rel, y_errs_rel, dist_rel
 
 
-def compare_cm_to_m(nep: NavErrorProfile, name: str, num_samples: int = 1000):
+def compare_cm_to_m(nep: EEP, name: str, num_samples: int = 1000) -> None:
+    """
+    Helper function for comparing eep distributions at cm precision and m precision.
+    Args:
+        nep: an EEP distribution
+        name: the name to give the resulting plots
+        num_samples: the number of samples to create before estimating
+    """
     m_to_cm = 0.01
     # now create trajectories of 1 m so that we can compare to sampling 1 m directly
     cm_x_errors = []
@@ -145,7 +190,10 @@ def compare_cm_to_m(nep: NavErrorProfile, name: str, num_samples: int = 1000):
 
 
 if __name__ == "__main__":
-
+    """
+    Compared two measured EEP distributions to simulations to confirm that the measured distributions can be
+    successfully created and manipulated. Essential for further modelling. 
+    """
     # load the 3 datasets:
     # 1. bad dvl
     # 2. good dvl
@@ -181,7 +229,7 @@ if __name__ == "__main__":
         save_eep(eep_cov, eep_cx, eep_cy, json_name)
 
         # now simulate some data with our calculated distribution to confirm we can model it correctly
-        test_nep = NavErrorProfile(eep_cov, eep_cx, eep_cy)
+        test_nep = EEP(eep_cov, eep_cx, eep_cy)
         test_x_err, test_y_err, test_dists = test_eep(test_nep)
 
         # scale simulated data according to distance
